@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "inputs": ["price", "cvd", "open_interest"],
+  "states": [
+    {
+      "id": "initiative_long_trend",
+      "condition": { "price": "up", "cvd": "up", "open_interest": "up" },
+      "market_state": "Strong bullish trend",
+      "interpretation": "New longs are entering with conviction and buyers are in control.",
+      "play": "Trade with the trend. Buy pullbacks, especially near VWAP.",
+      "risk_note": "Do not fade strength while OI keeps expanding."
+    },
+    {
+      "id": "initiative_short_trend",
+      "condition": { "price": "down", "cvd": "down", "open_interest": "up" },
+      "market_state": "Strong bearish trend",
+      "interpretation": "New shorts are entering aggressively and sellers are in control.",
+      "play": "Trade with the trend. Sell pullbacks toward VWAP.",
+      "risk_note": "Do not catch bottoms while OI is expanding."
+    },
+    {
+      "id": "short_squeeze",
+      "condition": { "price": "up", "cvd": "up", "open_interest": "down" },
+      "market_state": "Short squeeze",
+      "interpretation": "Rising price is driven by shorts closing, not new buyers.",
+      "play": "Take profits into strength. Avoid chasing longs.",
+      "risk_note": "Move can end abruptly once liquidations finish."
+    },
+    {
+      "id": "long_liquidation",
+      "condition": { "price": "down", "cvd": "down", "open_interest": "down" },
+      "market_state": "Long liquidation",
+      "interpretation": "Falling price is driven by forced long exits and panic selling.",
+      "play": "Look for exhaustion and potential mean reversion near support or VWAP.",
+      "risk_note": "Do not short into capitulation."
+    },
+    {
+      "id": "bullish_rotation",
+      "condition": { "price": "up", "cvd": "up", "open_interest": "flat" },
+      "market_state": "Bullish rotation / absorption",
+      "interpretation": "Buyers are aggressive but no new net positions are being added.",
+      "play": "Scalp only. Fade extremes and target VWAP.",
+      "risk_note": "Breakouts often fail without OI expansion."
+    },
+    {
+      "id": "bearish_rotation",
+      "condition": { "price": "down", "cvd": "down", "open_interest": "flat" },
+      "market_state": "Bearish rotation / absorption",
+      "interpretation": "Sellers are aggressive but no new net positions are being added.",
+      "play": "Scalp only. Expect chop or mean reversion.",
+      "risk_note": "Continuation is unlikely without OI expansion."
+    },
+    {
+      "id": "bull_trap",
+      "condition": { "price": "up", "cvd": "down", "open_interest": "up" },
+      "market_state": "Bull trap risk",
+      "interpretation": "Price is rising but buyers are not aggressive; shorts are adding.",
+      "play": "Avoid longs. Look for short entries at resistance.",
+      "risk_note": "Rally likely to fail."
+    },
+    {
+      "id": "bear_trap",
+      "condition": { "price": "down", "cvd": "up", "open_interest": "up" },
+      "market_state": "Bear trap risk",
+      "interpretation": "Price is falling but sellers are not aggressive; longs are absorbing.",
+      "play": "Avoid shorts. Look for reversal toward VWAP.",
+      "risk_note": "Flush may reverse sharply."
+    },
+    {
+      "id": "chop_balance",
+      "condition": { "price": "flat", "cvd": "flat", "open_interest": "flat" },
+      "market_state": "Chop / balance",
+      "interpretation": "Market is balanced with no side committing.",
+      "play": "Mean reversion only. Small size, quick exits.",
+      "risk_note": "Directional trades have low probability."
+    }
+  ]
+}
