@@ -11,11 +11,11 @@
   <meta name="apple-mobile-web-app-title" content="MrB">
 
   <!-- Icons -->
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7">
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=7">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=8">
 
   <!-- Manifest -->
-  <link rel="manifest" href="./manifest.webmanifest?v=7">
+  <link rel="manifest" href="./manifest.webmanifest?v=8">
 
   <style>
     :root {
@@ -158,17 +158,26 @@
     <div class="muted">Price · CVD · Open Interest · VWAP · Reaction</div>
 
     <div class="card">
-      <div class="group-title">Price</div>
+      <div class="group-title">
+        <span>Price</span>
+        <span class="help-icon" id="helpPrice" title="What does Price Up/Down/Flat mean?">?</span>
+      </div>
       <div class="choices" id="price"></div>
     </div>
 
     <div class="card">
-      <div class="group-title">CVD</div>
+      <div class="group-title">
+        <span>CVD</span>
+        <span class="help-icon" id="helpCvd" title="What does CVD Up/Down/Flat mean?">?</span>
+      </div>
       <div class="choices" id="cvd"></div>
     </div>
 
     <div class="card">
-      <div class="group-title">Open Interest</div>
+      <div class="group-title">
+        <span>Open Interest</span>
+        <span class="help-icon" id="helpOi" title="What does OI Up/Down/Flat mean?">?</span>
+      </div>
       <div class="choices" id="oi"></div>
     </div>
 
@@ -352,6 +361,59 @@
 
   // ---------- HELP MODAL ----------
   const HELP = {
+    price: {
+      title: "Price (Up / Flat / Down)",
+      body: `
+        <div class="muted">Price direction is the short-term direction over your already-defined window (N bars).</div>
+        <h3><span class="pill">Up</span></h3>
+        <p><strong>Meaning:</strong> Recent structure is moving higher (higher closes / higher swing).</p>
+        <p><strong>Use:</strong> Prefer buying pullbacks if other inputs confirm.</p>
+
+        <h3><span class="pill">Flat</span></h3>
+        <p><strong>Meaning:</strong> Overlapping candles / range; no clear short-term direction.</p>
+        <p><strong>Use:</strong> Prefer mean reversion and confirmation-based trades.</p>
+
+        <h3><span class="pill">Down</span></h3>
+        <p><strong>Meaning:</strong> Recent structure is moving lower (lower closes / lower swing).</p>
+        <p><strong>Use:</strong> Prefer selling pullbacks if other inputs confirm.</p>
+      `
+    },
+    cvd: {
+      title: "CVD (Up / Flat / Down)",
+      body: `
+        <div class="muted">CVD = cumulative volume delta (net aggressive buying vs selling) over your window.</div>
+
+        <h3><span class="pill">Up</span></h3>
+        <p><strong>Meaning:</strong> More market buys than market sells (buyers are the aggressor).</p>
+        <p><strong>Hint:</strong> If price is not rising, buyers may be getting absorbed.</p>
+
+        <h3><span class="pill">Flat</span></h3>
+        <p><strong>Meaning:</strong> Two-way flow is balanced; no clear aggressor.</p>
+        <p><strong>Hint:</strong> Use location (VWAP/levels) and Reaction to decide.</p>
+
+        <h3><span class="pill">Down</span></h3>
+        <p><strong>Meaning:</strong> More market sells than market buys (sellers are the aggressor).</p>
+        <p><strong>Hint:</strong> If price is not falling, sellers may be getting absorbed.</p>
+      `
+    },
+    oi: {
+      title: "Open Interest (Up / Flat / Down)",
+      body: `
+        <div class="muted">Open Interest (OI) = number of open contracts. It shows whether positions are being added or removed.</div>
+
+        <h3><span class="pill">Up</span></h3>
+        <p><strong>Meaning:</strong> New positions added (participation / position build).</p>
+        <p><strong>Hint:</strong> With price move → often initiative trend; with flat price → coil/absorption.</p>
+
+        <h3><span class="pill">Flat</span></h3>
+        <p><strong>Meaning:</strong> No meaningful change in outstanding positions.</p>
+        <p><strong>Hint:</strong> Often rotation/chop; direction signals less reliable.</p>
+
+        <h3><span class="pill">Down</span></h3>
+        <p><strong>Meaning:</strong> Positions closing (de-risking, covering, liquidation unwind).</p>
+        <p><strong>Hint:</strong> Price up + OI down = covering; price down + OI down = liquidation risk.</p>
+      `
+    },
     vwap: {
       title: "VWAP Position",
       body: `
@@ -409,8 +471,12 @@
   }
 
   function initHelp() {
+    $("helpPrice").onclick = () => openHelp("price");
+    $("helpCvd").onclick = () => openHelp("cvd");
+    $("helpOi").onclick = () => openHelp("oi");
     $("helpVwap").onclick = () => openHelp("vwap");
     $("helpReaction").onclick = () => openHelp("reaction");
+
     $("helpClose").onclick = closeHelp;
 
     $("helpBackdrop").addEventListener("click", (e) => {
