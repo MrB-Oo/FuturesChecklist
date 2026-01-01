@@ -1,10 +1,8 @@
-<!-- index.html -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-
   <title>MrB – Futures Flow</title>
 
   <!-- iOS PWA -->
@@ -13,11 +11,11 @@
   <meta name="apple-mobile-web-app-title" content="MrB">
 
   <!-- Icons (cache-busted) -->
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=5">
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=5">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=6">
 
   <!-- Manifest -->
-  <link rel="manifest" href="./manifest.webmanifest?v=5">
+  <link rel="manifest" href="./manifest.webmanifest?v=6">
 
   <style>
     :root {
@@ -28,6 +26,7 @@
       --ok: #2ecc71;
       --warn: #f1c40f;
       --bad: #e74c3c;
+      --border: #2a3142;
     }
     * { box-sizing: border-box; }
     body {
@@ -45,10 +44,20 @@
       border-radius: 14px;
       padding: 14px;
       margin-bottom: 12px;
+      border: 1px solid rgba(255,255,255,0.03);
     }
     .group-title { font-weight: 700; margin-bottom: 8px; }
     .choices { display: flex; gap: 8px; flex-wrap: wrap; }
-    label { border: 1px solid #2a3142; border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+
+    label {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform .03s ease;
+    }
+    label:active { transform: scale(0.99); }
     input { margin-right: 6px; }
 
     .result h2 { margin: 0 0 8px; font-size: 16px; }
@@ -58,14 +67,19 @@
 
     button {
       background: #1c2333;
-      border: 1px solid #2a3142;
+      border: 1px solid var(--border);
       color: var(--text);
       border-radius: 10px;
       padding: 10px 12px;
       cursor: pointer;
     }
-    .btns { display: flex; gap: 10px; margin-top: 10px; }
-    .debug { font-size: 12px; margin-top: 8px; color: var(--muted); }
+    .btns { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+
+    .debug { font-size: 12px; margin-top: 8px; color: var(--muted); white-space: pre-wrap; }
+    .error {
+      border-left: 4px solid var(--bad);
+      background: rgba(231, 76, 60, 0.08);
+    }
   </style>
 </head>
 
@@ -109,24 +123,24 @@
 
       <div class="btns">
         <button id="reset">Reset</button>
-        <button id="copy">Copy</button>
+        <button id="copy">Copy Full</button>
+        <button id="copyState">Copy State Only</button>
       </div>
     </div>
   </div>
 
 <script>
+  // Radio options
   const OPTIONS_3 = [
     { key: "up", label: "↑ Up" },
     { key: "down", label: "↓ Down" },
     { key: "flat", label: "→ Flat" }
   ];
-
   const OPTIONS_VWAP = [
     { key: "above", label: "Above" },
     { key: "at", label: "At" },
     { key: "below", label: "Below" }
   ];
-
   const OPTIONS_REACTION = [
     { key: "accept", label: "Accept" },
     { key: "reject", label: "Reject" }
@@ -142,8 +156,11 @@
 
   let rules = null;
 
-  function renderGroup(id, key, options) {
-    const el = document.getElementById(id);
+  function $(id) { return document.getElementById(id); }
+
+  function renderGroup(containerId, key, options) {
+    const el = $(containerId);
+    el.innerHTML = "";
     options.forEach(opt => {
       const label = document.createElement("label");
       const input = document.createElement("input");
@@ -151,7 +168,8 @@
       input.type = "radio";
       input.name = key;
       input.value = opt.key;
-      input.addEventListener("input", () => {
+
+      input.addEventListener("change", () => {
         selection[key] = opt.key;
         update();
       });
@@ -170,18 +188,30 @@
     return "warn";
   }
 
-  function getOverlay(path, key) {
+  function overlay(path, key) {
     return rules?.overlays?.[path]?.[key] || null;
   }
 
+  function setError(msg, details) {
+    const card = $("result");
+    card.className = "card result error";
+    $("state").textContent = msg || "Error";
+    $("interpretation").textContent = details || "";
+    $("play").textContent = "";
+    $("risk").textContent = "";
+  }
+
   function update() {
-    document.getElementById("debug").textContent =
+    $("debug").textContent =
       `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}, vwap=${selection.vwap_position || "?"}, reaction=${selection.reaction || "?"}`;
 
     if (!rules) return;
 
     const { price, cvd, open_interest, vwap_position, reaction } = selection;
-    if (!price || !cvd || !open_interest || !vwap_position || !reaction) return;
+    if (!price || !cvd || !open_interest || !vwap_position || !reaction) {
+      // partial selection - don't overwrite existing result
+      return;
+    }
 
     const base = rules.states.find(s =>
       s.condition.price === price &&
@@ -189,21 +219,15 @@
       s.condition.open_interest === open_interest
     );
 
-    const card = document.getElementById("result");
-    card.className = "card result";
-
     if (!base) {
-      document.getElementById("state").textContent = "No rule defined";
-      document.getElementById("interpretation").textContent = "";
-      document.getElementById("play").textContent = "";
-      document.getElementById("risk").textContent = "";
+      setError("No rule defined for that combination.", "Check your rules.json states array.");
       return;
     }
 
-    const vwap = getOverlay("vwap_position", vwap_position);
-    const react = getOverlay("reaction", reaction);
+    const vwap = overlay("vwap_position", vwap_position);
+    const react = overlay("reaction", reaction);
 
-    const title = `${base.market_state} — ${vwap?.label || vwap_position}, ${react?.label || reaction}`;
+    const title = `${base.market_state} — ${(vwap?.label || vwap_position)} / ${(react?.label || reaction)}`;
 
     const interpretation = [
       base.interpretation,
@@ -223,11 +247,34 @@
       react?.append?.risk_note
     ].filter(Boolean).join(" ");
 
+    const card = $("result");
+    card.className = "card result";
     card.classList.add(classifyFromText(base.market_state));
-    document.getElementById("state").textContent = title;
-    document.getElementById("interpretation").textContent = interpretation;
-    document.getElementById("play").textContent = play;
-    document.getElementById("risk").textContent = risk;
+
+    $("state").textContent = title;
+    $("interpretation").textContent = interpretation;
+    $("play").textContent = play;
+    $("risk").textContent = risk;
+  }
+
+  async function loadRules() {
+    // GitHub Pages can cache aggressively — force fresh fetch
+    const url = "./rules.json?v=" + Date.now();
+
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} loading rules.json`);
+
+    const json = await res.json();
+
+    // Basic shape checks (fail fast with helpful error)
+    if (!json || !Array.isArray(json.states)) {
+      throw new Error("rules.json loaded but missing required 'states' array.");
+    }
+    if (!json.overlays || !json.overlays.vwap_position || !json.overlays.reaction) {
+      throw new Error("rules.json loaded but missing 'overlays.vwap_position' or 'overlays.reaction'.");
+    }
+
+    return json;
   }
 
   async function init() {
@@ -237,23 +284,33 @@
     renderGroup("vwap", "vwap_position", OPTIONS_VWAP);
     renderGroup("reaction", "reaction", OPTIONS_REACTION);
 
-    const res = await fetch("./rules.json?v=5");
-    rules = await res.json();
+    try {
+      rules = await loadRules();
+      $("debug").textContent += "\nRules loaded: version=" + (rules.version || "?") + ", states=" + rules.states.length;
+    } catch (e) {
+      setError("Failed to load rules.json", String(e));
+      $("debug").textContent += "\n" + String(e);
+      return;
+    }
 
-    document.getElementById("reset").onclick = () => location.reload();
+    $("reset").onclick = () => location.reload();
 
-    document.getElementById("copy").onclick = async () => {
+    $("copyState").onclick = async () => {
+      const text = $("state").textContent;
+      if (text) await navigator.clipboard.writeText(text);
+      alert("Copied state");
+    };
+
+    $("copy").onclick = async () => {
       const text = [
-        document.getElementById("state").textContent,
-        document.getElementById("interpretation").textContent,
-        "Play: " + document.getElementById("play").textContent,
-        "Risk: " + document.getElementById("risk").textContent
+        $("state").textContent,
+        $("interpretation").textContent,
+        "Play: " + $("play").textContent,
+        "Risk: " + $("risk").textContent
       ].filter(Boolean).join("\n");
       if (text) await navigator.clipboard.writeText(text);
       alert("Copied");
     };
-
-    update();
   }
 
   init();
