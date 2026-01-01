@@ -1,41 +1,120 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Futures">
-  <link rel="apple-touch-icon" href="./icon-192.png">
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Futures Flow Checklist</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <title>MrB – Futures Flow</title>
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MrB">
+
+  <!-- Icons (cache-busted) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=4">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=4">
+
+  <!-- Manifest -->
+  <link rel="manifest" href="./manifest.webmanifest?v=4">
+
+  <!-- Basic styling -->
   <style>
-    :root { font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif; }
-    body { margin: 0; padding: 16px; max-width: 720px; }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    .row { display: grid; gap: 10px; margin-bottom: 12px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
-    .group-title { font-weight: 700; margin-bottom: 6px; }
-    .choices { display: flex; gap: 10px; flex-wrap: wrap; }
-    label { border: 1px solid #ddd; border-radius: 10px; padding: 8px 10px; cursor: pointer; user-select: none; }
+    :root {
+      --bg: #0b0e14;
+      --card: #121826;
+      --text: #e6e8eb;
+      --muted: #9aa0a6;
+      --ok: #2ecc71;
+      --warn: #f1c40f;
+      --bad: #e74c3c;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0 0 6px;
+    }
+
+    .muted { color: var(--muted); font-size: 13px; }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .group-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .choices {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    label {
+      border: 1px solid #2a3142;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
     input { margin-right: 6px; }
-    .result h2 { margin: 0 0 8px; font-size: 16px; }
-    .muted { color: #666; }
-    .pill { display: inline-block; padding: 3px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; margin-left: 6px; }
-    .warn { border-color: #f2c200; }
-    .ok { border-color: #4caf50; }
-    .bad { border-color: #f44336; }
-    .btns { display: flex; gap: 10px; margin-top: 10px; }
-    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer; }
-    .debug { font-size: 12px; margin-top: 8px; }
-    .debug code { background: #f6f6f6; padding: 2px 6px; border-radius: 8px; }
+
+    .result h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .ok { border-left: 4px solid var(--ok); }
+    .warn { border-left: 4px solid var(--warn); }
+    .bad { border-left: 4px solid var(--bad); }
+
+    button {
+      background: #1c2333;
+      border: 1px solid #2a3142;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    .btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .debug {
+      font-size: 12px;
+      margin-top: 8px;
+      color: var(--muted);
+    }
   </style>
 </head>
-<body>
-  <h1>Futures Flow Checklist <span class="pill" id="ver">v?</span></h1>
-  <p class="muted">Pick directions. Result updates instantly.</p>
 
-  <div class="row">
+<body>
+  <div class="wrap">
+    <h1>MrB – Futures Flow</h1>
+    <div class="muted">Price · CVD · Open Interest</div>
+
     <div class="card">
       <div class="group-title">Price</div>
       <div class="choices" id="price"></div>
@@ -51,135 +130,83 @@
       <div class="choices" id="oi"></div>
     </div>
 
-    <div class="card result" id="resultCard">
-      <h2 id="stateTitle">Select inputs…</h2>
+    <div class="card result" id="result">
+      <h2 id="state">Select inputs…</h2>
       <p id="interpretation" class="muted"></p>
       <p><strong>Play:</strong> <span id="play"></span></p>
       <p><strong>Risk:</strong> <span id="risk"></span></p>
 
-      <div class="debug muted">
-        Selected: <code id="debugSel">price=? cvd=? oi=?</code>
-      </div>
+      <div class="debug" id="debug"></div>
 
       <div class="btns">
         <button id="reset">Reset</button>
-        <button id="copy">Copy result</button>
+        <button id="copy">Copy</button>
       </div>
     </div>
   </div>
 
 <script>
   const OPTIONS = [
-    { key: "up",   label: "↑ Up" },
+    { key: "up", label: "↑ Up" },
     { key: "down", label: "↓ Down" },
     { key: "flat", label: "→ Flat" }
   ];
 
-  let rules = null;
   const selection = { price: null, cvd: null, open_interest: null };
+  let rules = null;
 
-  function renderGroup(containerId, field) {
-    const el = document.getElementById(containerId);
-    el.innerHTML = "";
+  function renderGroup(id, key) {
+    const el = document.getElementById(id);
     OPTIONS.forEach(opt => {
-      const id = `${field}_${opt.key}`;
-
       const label = document.createElement("label");
-      label.htmlFor = id;
-
       const input = document.createElement("input");
-      input.type = "radio";
-      input.name = field;
-      input.id = id;
-      input.value = opt.key;
 
-      // "input" feels more immediate than "change" on some devices
+      input.type = "radio";
+      input.name = key;
+      input.value = opt.key;
       input.addEventListener("input", () => {
-        selection[field] = opt.key;
-        updateResult();
+        selection[key] = opt.key;
+        update();
       });
 
       label.appendChild(input);
-      label.appendChild(document.createTextNode(opt.label));
+      label.append(opt.label);
       el.appendChild(label);
     });
   }
 
-  function matchState() {
-    if (!rules) return null;
-    const { price, cvd, open_interest } = selection;
-    if (!price || !cvd || !open_interest) return null;
-
-    return rules.states.find(s =>
-      s.condition.price === price &&
-      s.condition.cvd === cvd &&
-      s.condition.open_interest === open_interest
-    ) || null;
-  }
-
-  function setCardClass(card, kind) {
-    card.classList.remove("ok", "warn", "bad");
-    if (kind) card.classList.add(kind);
-  }
-
-  function classify(stateId) {
-    // Simple visual cue: trends=ok, traps=bad, others=warn
-    if (!stateId) return null;
-    if (stateId.includes("initiative")) return "ok";
-    if (stateId.includes("trap")) return "bad";
-    if (
-      stateId.includes("liquidation") ||
-      stateId.includes("squeeze") ||
-      stateId.includes("rotation") ||
-      stateId.includes("chop") ||
-      stateId.includes("Absorption") ||
-      stateId.includes("build")
-    ) return "warn";
+  function classify(id) {
+    if (!id) return "";
+    if (id.includes("trend")) return "ok";
+    if (id.includes("trap")) return "bad";
     return "warn";
   }
 
-  function updateDebug() {
-    const price = selection.price || "?";
-    const cvd = selection.cvd || "?";
-    const oi  = selection.open_interest || "?";
-    document.getElementById("debugSel").textContent = `price=${price} cvd=${cvd} oi=${oi}`;
-  }
+  function update() {
+    document.getElementById("debug").textContent =
+      `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}`;
 
-  function updateResult() {
-    updateDebug();
+    if (!selection.price || !selection.cvd || !selection.open_interest) return;
 
-    const card = document.getElementById("resultCard");
-    const state = matchState();
+    const state = rules.states.find(s =>
+      s.condition.price === selection.price &&
+      s.condition.cvd === selection.cvd &&
+      s.condition.open_interest === selection.open_interest
+    );
 
-    const allSelected =
-      selection.price && selection.cvd && selection.open_interest;
-
-    if (!allSelected) {
-      document.getElementById("stateTitle").textContent = "Select inputs…";
-      document.getElementById("interpretation").textContent = "";
-      document.getElementById("play").textContent = "";
-      document.getElementById("risk").textContent = "";
-      setCardClass(card, null);
-      return;
-    }
+    const card = document.getElementById("result");
+    card.className = "card result";
 
     if (!state) {
-      document.getElementById("stateTitle").textContent =
-        "No rule for this combination (check rules.json)";
-      document.getElementById("interpretation").textContent =
-        "All three inputs are selected, but no matching condition exists.";
-      document.getElementById("play").textContent = "Add a rule for this combo.";
-      document.getElementById("risk").textContent = "This is a debug message.";
-      setCardClass(card, "warn");
+      document.getElementById("state").textContent = "No rule defined";
       return;
     }
 
-    document.getElementById("stateTitle").textContent = state.market_state;
+    card.classList.add(classify(state.id));
+    document.getElementById("state").textContent = state.market_state;
     document.getElementById("interpretation").textContent = state.interpretation;
     document.getElementById("play").textContent = state.play;
     document.getElementById("risk").textContent = state.risk_note;
-
-    setCardClass(card, classify(state.id));
   }
 
   async function init() {
@@ -187,43 +214,16 @@
     renderGroup("cvd", "cvd");
     renderGroup("oi", "open_interest");
 
-    const res = await fetch("./rules.json", { cache: "no-store" });
+    const res = await fetch("./rules.json?v=4");
     rules = await res.json();
 
-    document.getElementById("ver").textContent = "v" + (rules.version || "?");
+    document.getElementById("reset").onclick = () => location.reload();
 
-    document.getElementById("reset").addEventListener("click", () => {
-      ["price", "cvd", "open_interest"].forEach(name => {
-        document.querySelectorAll(`input[name="${name}"]`).forEach(i => i.checked = false);
-      });
-      selection.price = selection.cvd = selection.open_interest = null;
-      updateResult();
-    });
-
-    document.getElementById("copy").addEventListener("click", async () => {
-      const state = matchState();
-      if (!state) return;
-
-      const price = selection.price || "?";
-      const cvd = selection.cvd || "?";
-      const oi = selection.open_interest || "?";
-
-      const text =
-`Inputs: price=${price}, cvd=${cvd}, oi=${oi}
-Market state: ${state.market_state}
-Interpretation: ${state.interpretation}
-Play: ${state.play}
-Risk: ${state.risk_note}`;
-
-      try {
-        await navigator.clipboard.writeText(text);
-        alert("Copied!");
-      } catch {
-        alert("Copy failed (some iOS setups require HTTPS).");
-      }
-    });
-
-    updateResult();
+    document.getElementById("copy").onclick = async () => {
+      const text = document.getElementById("state").textContent;
+      if (text) await navigator.clipboard.writeText(text);
+      alert("Copied");
+    };
   }
 
   init();
