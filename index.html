@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -12,13 +13,12 @@
   <meta name="apple-mobile-web-app-title" content="MrB">
 
   <!-- Icons (cache-busted) -->
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=4">
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=4">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=5">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=5">
 
   <!-- Manifest -->
-  <link rel="manifest" href="./manifest.webmanifest?v=4">
+  <link rel="manifest" href="./manifest.webmanifest?v=5">
 
-  <!-- Basic styling -->
   <style>
     :root {
       --bg: #0b0e14;
@@ -29,7 +29,6 @@
       --warn: #f1c40f;
       --bad: #e74c3c;
     }
-
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -37,18 +36,8 @@
       color: var(--text);
       font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
     }
-
-    .wrap {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-
-    h1 {
-      font-size: 18px;
-      margin: 0 0 6px;
-    }
-
+    .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 18px; margin: 0 0 6px; }
     .muted { color: var(--muted); font-size: 13px; }
 
     .card {
@@ -57,32 +46,12 @@
       padding: 14px;
       margin-bottom: 12px;
     }
-
-    .group-title {
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .choices {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    label {
-      border: 1px solid #2a3142;
-      border-radius: 10px;
-      padding: 8px 10px;
-      cursor: pointer;
-    }
-
+    .group-title { font-weight: 700; margin-bottom: 8px; }
+    .choices { display: flex; gap: 8px; flex-wrap: wrap; }
+    label { border: 1px solid #2a3142; border-radius: 10px; padding: 8px 10px; cursor: pointer; }
     input { margin-right: 6px; }
 
-    .result h2 {
-      margin: 0 0 8px;
-      font-size: 16px;
-    }
-
+    .result h2 { margin: 0 0 8px; font-size: 16px; }
     .ok { border-left: 4px solid var(--ok); }
     .warn { border-left: 4px solid var(--warn); }
     .bad { border-left: 4px solid var(--bad); }
@@ -95,25 +64,15 @@
       padding: 10px 12px;
       cursor: pointer;
     }
-
-    .btns {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .debug {
-      font-size: 12px;
-      margin-top: 8px;
-      color: var(--muted);
-    }
+    .btns { display: flex; gap: 10px; margin-top: 10px; }
+    .debug { font-size: 12px; margin-top: 8px; color: var(--muted); }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <h1>MrB – Futures Flow</h1>
-    <div class="muted">Price · CVD · Open Interest</div>
+    <div class="muted">Price · CVD · Open Interest · VWAP · Reaction</div>
 
     <div class="card">
       <div class="group-title">Price</div>
@@ -128,6 +87,16 @@
     <div class="card">
       <div class="group-title">Open Interest</div>
       <div class="choices" id="oi"></div>
+    </div>
+
+    <div class="card">
+      <div class="group-title">VWAP Position</div>
+      <div class="choices" id="vwap"></div>
+    </div>
+
+    <div class="card">
+      <div class="group-title">Reaction</div>
+      <div class="choices" id="reaction"></div>
     </div>
 
     <div class="card result" id="result">
@@ -146,18 +115,36 @@
   </div>
 
 <script>
-  const OPTIONS = [
+  const OPTIONS_3 = [
     { key: "up", label: "↑ Up" },
     { key: "down", label: "↓ Down" },
     { key: "flat", label: "→ Flat" }
   ];
 
-  const selection = { price: null, cvd: null, open_interest: null };
+  const OPTIONS_VWAP = [
+    { key: "above", label: "Above" },
+    { key: "at", label: "At" },
+    { key: "below", label: "Below" }
+  ];
+
+  const OPTIONS_REACTION = [
+    { key: "accept", label: "Accept" },
+    { key: "reject", label: "Reject" }
+  ];
+
+  const selection = {
+    price: null,
+    cvd: null,
+    open_interest: null,
+    vwap_position: null,
+    reaction: null
+  };
+
   let rules = null;
 
-  function renderGroup(id, key) {
+  function renderGroup(id, key, options) {
     const el = document.getElementById(id);
-    OPTIONS.forEach(opt => {
+    options.forEach(opt => {
       const label = document.createElement("label");
       const input = document.createElement("input");
 
@@ -175,55 +162,98 @@
     });
   }
 
-  function classify(id) {
-    if (!id) return "";
-    if (id.includes("trend")) return "ok";
-    if (id.includes("trap")) return "bad";
+  function classifyFromText(text) {
+    const t = (text || "").toLowerCase();
+    if (t.includes("trend up") || t.includes("trend down")) return "ok";
+    if (t.includes("liquidation") || t.includes("capitulation") || t.includes("trap")) return "bad";
+    if (t.includes("chop") || t.includes("balance") || t.includes("rotation") || t.includes("conflict")) return "warn";
     return "warn";
+  }
+
+  function getOverlay(path, key) {
+    return rules?.overlays?.[path]?.[key] || null;
   }
 
   function update() {
     document.getElementById("debug").textContent =
-      `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}`;
+      `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}, vwap=${selection.vwap_position || "?"}, reaction=${selection.reaction || "?"}`;
 
-    if (!selection.price || !selection.cvd || !selection.open_interest) return;
+    if (!rules) return;
 
-    const state = rules.states.find(s =>
-      s.condition.price === selection.price &&
-      s.condition.cvd === selection.cvd &&
-      s.condition.open_interest === selection.open_interest
+    const { price, cvd, open_interest, vwap_position, reaction } = selection;
+    if (!price || !cvd || !open_interest || !vwap_position || !reaction) return;
+
+    const base = rules.states.find(s =>
+      s.condition.price === price &&
+      s.condition.cvd === cvd &&
+      s.condition.open_interest === open_interest
     );
 
     const card = document.getElementById("result");
     card.className = "card result";
 
-    if (!state) {
+    if (!base) {
       document.getElementById("state").textContent = "No rule defined";
+      document.getElementById("interpretation").textContent = "";
+      document.getElementById("play").textContent = "";
+      document.getElementById("risk").textContent = "";
       return;
     }
 
-    card.classList.add(classify(state.id));
-    document.getElementById("state").textContent = state.market_state;
-    document.getElementById("interpretation").textContent = state.interpretation;
-    document.getElementById("play").textContent = state.play;
-    document.getElementById("risk").textContent = state.risk_note;
+    const vwap = getOverlay("vwap_position", vwap_position);
+    const react = getOverlay("reaction", reaction);
+
+    const title = `${base.market_state} — ${vwap?.label || vwap_position}, ${react?.label || reaction}`;
+
+    const interpretation = [
+      base.interpretation,
+      vwap?.append?.interpretation,
+      react?.append?.interpretation
+    ].filter(Boolean).join(" ");
+
+    const play = [
+      base.play,
+      vwap?.append?.play,
+      react?.append?.play
+    ].filter(Boolean).join(" ");
+
+    const risk = [
+      base.risk_note,
+      vwap?.append?.risk_note,
+      react?.append?.risk_note
+    ].filter(Boolean).join(" ");
+
+    card.classList.add(classifyFromText(base.market_state));
+    document.getElementById("state").textContent = title;
+    document.getElementById("interpretation").textContent = interpretation;
+    document.getElementById("play").textContent = play;
+    document.getElementById("risk").textContent = risk;
   }
 
   async function init() {
-    renderGroup("price", "price");
-    renderGroup("cvd", "cvd");
-    renderGroup("oi", "open_interest");
+    renderGroup("price", "price", OPTIONS_3);
+    renderGroup("cvd", "cvd", OPTIONS_3);
+    renderGroup("oi", "open_interest", OPTIONS_3);
+    renderGroup("vwap", "vwap_position", OPTIONS_VWAP);
+    renderGroup("reaction", "reaction", OPTIONS_REACTION);
 
-    const res = await fetch("./rules.json?v=4");
+    const res = await fetch("./rules.json?v=5");
     rules = await res.json();
 
     document.getElementById("reset").onclick = () => location.reload();
 
     document.getElementById("copy").onclick = async () => {
-      const text = document.getElementById("state").textContent;
+      const text = [
+        document.getElementById("state").textContent,
+        document.getElementById("interpretation").textContent,
+        "Play: " + document.getElementById("play").textContent,
+        "Risk: " + document.getElementById("risk").textContent
+      ].filter(Boolean).join("\n");
       if (text) await navigator.clipboard.writeText(text);
       alert("Copied");
     };
+
+    update();
   }
 
   init();
