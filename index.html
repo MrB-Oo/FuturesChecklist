@@ -11,11 +11,11 @@
   <meta name="apple-mobile-web-app-title" content="MrB">
 
   <!-- Icons -->
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6">
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=6">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=7">
 
   <!-- Manifest -->
-  <link rel="manifest" href="./manifest.webmanifest?v=6">
+  <link rel="manifest" href="./manifest.webmanifest?v=7">
 
   <style>
     :root {
@@ -39,14 +39,6 @@
     h1 { font-size: 18px; margin: 0 0 6px; }
     .muted { color: var(--muted); font-size: 13px; }
 
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-
     .card {
       background: var(--card);
       border-radius: 14px;
@@ -54,7 +46,16 @@
       margin-bottom: 12px;
       border: 1px solid rgba(255,255,255,0.03);
     }
-    .group-title { font-weight: 700; margin-bottom: 8px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+
+    .group-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
     .choices { display: flex; gap: 8px; flex-wrap: wrap; }
 
     label {
@@ -78,11 +79,30 @@
       border-radius: 10px;
       padding: 10px 12px;
       cursor: pointer;
-      white-space: nowrap;
     }
     .btns { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 
     .debug { font-size: 12px; margin-top: 8px; color: var(--muted); white-space: pre-wrap; }
+
+    /* Small help icon */
+    .help-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #1c2333;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      flex: 0 0 auto;
+    }
+    .help-icon:active { transform: scale(0.98); }
+    .help-icon:hover { filter: brightness(1.1); }
 
     /* Modal */
     .modal-backdrop {
@@ -134,13 +154,8 @@
 
 <body>
   <div class="wrap">
-    <div class="topbar">
-      <div>
-        <h1>MrB – Futures Flow</h1>
-        <div class="muted">Price · CVD · Open Interest · VWAP · Reaction</div>
-      </div>
-      <button id="helpBtn" title="Quick reference">Quick Help</button>
-    </div>
+    <h1>MrB – Futures Flow</h1>
+    <div class="muted">Price · CVD · Open Interest · VWAP · Reaction</div>
 
     <div class="card">
       <div class="group-title">Price</div>
@@ -158,15 +173,19 @@
     </div>
 
     <div class="card">
-      <div class="group-title">VWAP Position</div>
+      <div class="group-title">
+        <span>VWAP Position</span>
+        <span class="help-icon" id="helpVwap" title="What does VWAP position mean?">?</span>
+      </div>
       <div class="choices" id="vwap"></div>
-      <div class="muted" style="margin-top:8px">Tip: above = buyer advantage, below = seller advantage.</div>
     </div>
 
     <div class="card">
-      <div class="group-title">Reaction</div>
+      <div class="group-title">
+        <span>Reaction</span>
+        <span class="help-icon" id="helpReaction" title="What does Accept / Reject mean?">?</span>
+      </div>
       <div class="choices" id="reaction"></div>
-      <div class="muted" style="margin-top:8px">Accept = hold beyond level, Reject = wick through then close back.</div>
     </div>
 
     <div class="card result" id="result">
@@ -186,61 +205,14 @@
   </div>
 
   <!-- HELP MODAL -->
-  <div class="modal-backdrop" id="helpBackdrop" role="dialog" aria-modal="true" aria-label="Quick Help">
+  <div class="modal-backdrop" id="helpBackdrop" role="dialog" aria-modal="true" aria-label="Help">
     <div class="modal">
       <div class="close-row">
-        <h2>Quick Help</h2>
+        <h2 id="helpTitle">Help</h2>
         <button id="helpClose">Close</button>
       </div>
 
-      <div class="muted">Use this when you’re unsure what to pick for VWAP / Reaction.</div>
-
-      <h3>VWAP Position</h3>
-      <div>
-        <span class="pill">Above VWAP</span>
-        <p><strong>Meaning:</strong> Market is paying above “fair value” → buyers have advantage.</p>
-        <p><strong>Typical:</strong> Dips bought, pullbacks bounce.</p>
-        <p><strong>Bias:</strong> Prefer longs on pullbacks; only short after VWAP loss + failed reclaim.</p>
-      </div>
-
-      <div>
-        <span class="pill">At VWAP</span>
-        <p><strong>Meaning:</strong> Decision point / balance area.</p>
-        <p><strong>Typical:</strong> Chop/whipsaw.</p>
-        <p><strong>Bias:</strong> Wait for Reaction (Accept/Reject) then trade the confirmation.</p>
-      </div>
-
-      <div>
-        <span class="pill">Below VWAP</span>
-        <p><strong>Meaning:</strong> Market is paying below “fair value” → sellers have advantage.</p>
-        <p><strong>Typical:</strong> Rallies sold, bounces fail.</p>
-        <p><strong>Bias:</strong> Prefer shorts on pullbacks; only long after VWAP reclaim + hold.</p>
-      </div>
-
-      <h3>Reaction</h3>
-      <div>
-        <span class="pill">Accept</span>
-        <p><strong>Meaning:</strong> Price moves through a level and <strong>holds</strong> it.</p>
-        <p><strong>Simple rule:</strong> Close(s) stay beyond the level + follow-through (no immediate snap back).</p>
-        <p><strong>Implication:</strong> Continuation more likely → trade break-and-hold then retest.</p>
-      </div>
-
-      <div>
-        <span class="pill">Reject</span>
-        <p><strong>Meaning:</strong> Price probes through a level then <strong>fails</strong> back.</p>
-        <p><strong>Simple rule:</strong> Wick through the level, but close back on the original side.</p>
-        <p><strong>Implication:</strong> Mean reversion more likely → fade back toward VWAP/mean after confirmation.</p>
-      </div>
-
-      <h3>Fast combo cheats</h3>
-      <p><span class="kbd">Above + Accept</span> → bullish continuation (buy retest).</p>
-      <p><span class="kbd">Above + Reject</span> → exhaustion risk (reduce longs; shorts only if VWAP breaks).</p>
-      <p><span class="kbd">Below + Accept</span> → bearish continuation (sell retest).</p>
-      <p><span class="kbd">Below + Reject</span> → bounce risk (cover shorts; long only after reclaim/structure).</p>
-
-      <div class="muted" style="margin-top:10px">
-        Reaction is usually judged at the “active level” you care about (VWAP, band, prior high/low).
-      </div>
+      <div id="helpBody"></div>
     </div>
   </div>
 
@@ -378,23 +350,75 @@
     return json;
   }
 
-  function initHelp() {
+  // ---------- HELP MODAL ----------
+  const HELP = {
+    vwap: {
+      title: "VWAP Position",
+      body: `
+        <div class="muted">VWAP is intraday “fair value”. Where price sits vs VWAP sets the default bias.</div>
+
+        <h3><span class="pill">Above VWAP</span></h3>
+        <p><strong>Meaning:</strong> Buyers have advantage (market paying above fair value).</p>
+        <p><strong>Typical:</strong> Dips bought; pullbacks bounce.</p>
+        <p><strong>Bias:</strong> Prefer longs on pullbacks; shorts need VWAP loss + failed reclaim.</p>
+
+        <h3><span class="pill">At VWAP</span></h3>
+        <p><strong>Meaning:</strong> Decision point / balance.</p>
+        <p><strong>Typical:</strong> Chop/whipsaw.</p>
+        <p><strong>Bias:</strong> Wait for Reaction (Accept/Reject) then trade confirmation.</p>
+
+        <h3><span class="pill">Below VWAP</span></h3>
+        <p><strong>Meaning:</strong> Sellers have advantage (market paying below fair value).</p>
+        <p><strong>Typical:</strong> Rallies sold; bounces fail.</p>
+        <p><strong>Bias:</strong> Prefer shorts on pullbacks; longs need VWAP reclaim + hold.</p>
+      `
+    },
+    reaction: {
+      title: "Reaction (Accept / Reject)",
+      body: `
+        <div class="muted">Reaction describes what price does at the level you care about (VWAP, band, prior high/low).</div>
+
+        <h3><span class="pill">Accept</span></h3>
+        <p><strong>Meaning:</strong> Price goes through a level and <strong>holds</strong> beyond it.</p>
+        <p><strong>Simple rule:</strong> Close(s) stay beyond the level + follow-through (no immediate snap back).</p>
+        <p><strong>Implication:</strong> Continuation more likely → trade break-and-hold then retest.</p>
+
+        <h3><span class="pill">Reject</span></h3>
+        <p><strong>Meaning:</strong> Price probes through a level then <strong>fails</strong> back.</p>
+        <p><strong>Simple rule:</strong> Wick through the level but close back on the original side.</p>
+        <p><strong>Implication:</strong> Mean reversion more likely → fade toward VWAP/mean after confirmation.</p>
+
+        <h3>Fast cheats</h3>
+        <p><span class="kbd">Above + Accept</span> → continuation (buy retest).</p>
+        <p><span class="kbd">Above + Reject</span> → exhaustion risk (reduce longs; shorts only if VWAP breaks).</p>
+        <p><span class="kbd">Below + Accept</span> → continuation (sell retest).</p>
+        <p><span class="kbd">Below + Reject</span> → bounce risk (cover shorts; long only after reclaim/structure).</p>
+      `
+    }
+  };
+
+  function openHelp(which) {
     const backdrop = $("helpBackdrop");
-    const openBtn = $("helpBtn");
-    const closeBtn = $("helpClose");
+    $("helpTitle").textContent = HELP[which].title;
+    $("helpBody").innerHTML = HELP[which].body;
+    backdrop.style.display = "flex";
+  }
 
-    function open() { backdrop.style.display = "flex"; }
-    function close() { backdrop.style.display = "none"; }
+  function closeHelp() {
+    $("helpBackdrop").style.display = "none";
+  }
 
-    openBtn.onclick = open;
-    closeBtn.onclick = close;
+  function initHelp() {
+    $("helpVwap").onclick = () => openHelp("vwap");
+    $("helpReaction").onclick = () => openHelp("reaction");
+    $("helpClose").onclick = closeHelp;
 
-    backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) close();
+    $("helpBackdrop").addEventListener("click", (e) => {
+      if (e.target === $("helpBackdrop")) closeHelp();
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") closeHelp();
     });
   }
 
