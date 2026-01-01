@@ -4,38 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-  <title>MrB – Futures Flow</title>
+  <title>Order Flow Support</title>
 
-  <!-- iOS PWA -->
+  <!-- iOS PWA settings -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="MrB">
+  <meta name="apple-mobile-web-app-title" content="Order Flow">
 
-  <!-- Icons (cache-busted) -->
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=4">
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=4">
+  <!-- ICONS (version bumped to break iOS cache) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=7">
 
   <!-- Manifest -->
-  <link rel="manifest" href="./manifest.webmanifest?v=4">
+  <link rel="manifest" href="./manifest.webmanifest?v=7">
 
-  <!-- Basic styling -->
+  <!-- Theme -->
+  <meta name="theme-color" content="#0b0e14">
+
   <style>
-    :root {
-      --bg: #0b0e14;
-      --card: #121826;
-      --text: #e6e8eb;
-      --muted: #9aa0a6;
-      --ok: #2ecc71;
-      --warn: #f1c40f;
-      --bad: #e74c3c;
-    }
-
-    * { box-sizing: border-box; }
     body {
       margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0b0e14;
+      color: #e6e8eb;
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     }
 
     .wrap {
@@ -46,187 +37,33 @@
 
     h1 {
       font-size: 18px;
-      margin: 0 0 6px;
+      margin-bottom: 4px;
     }
 
-    .muted { color: var(--muted); font-size: 13px; }
+    .muted {
+      color: #9aa0a6;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
 
     .card {
-      background: var(--card);
+      background: #121826;
       border-radius: 14px;
       padding: 14px;
       margin-bottom: 12px;
-    }
-
-    .group-title {
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .choices {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    label {
-      border: 1px solid #2a3142;
-      border-radius: 10px;
-      padding: 8px 10px;
-      cursor: pointer;
-    }
-
-    input { margin-right: 6px; }
-
-    .result h2 {
-      margin: 0 0 8px;
-      font-size: 16px;
-    }
-
-    .ok { border-left: 4px solid var(--ok); }
-    .warn { border-left: 4px solid var(--warn); }
-    .bad { border-left: 4px solid var(--bad); }
-
-    button {
-      background: #1c2333;
-      border: 1px solid #2a3142;
-      color: var(--text);
-      border-radius: 10px;
-      padding: 10px 12px;
-      cursor: pointer;
-    }
-
-    .btns {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .debug {
-      font-size: 12px;
-      margin-top: 8px;
-      color: var(--muted);
     }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <h1>MrB – Futures Flow</h1>
+    <h1>Order Flow Support</h1>
     <div class="muted">Price · CVD · Open Interest</div>
 
     <div class="card">
-      <div class="group-title">Price</div>
-      <div class="choices" id="price"></div>
-    </div>
-
-    <div class="card">
-      <div class="group-title">CVD</div>
-      <div class="choices" id="cvd"></div>
-    </div>
-
-    <div class="card">
-      <div class="group-title">Open Interest</div>
-      <div class="choices" id="oi"></div>
-    </div>
-
-    <div class="card result" id="result">
-      <h2 id="state">Select inputs…</h2>
-      <p id="interpretation" class="muted"></p>
-      <p><strong>Play:</strong> <span id="play"></span></p>
-      <p><strong>Risk:</strong> <span id="risk"></span></p>
-
-      <div class="debug" id="debug"></div>
-
-      <div class="btns">
-        <button id="reset">Reset</button>
-        <button id="copy">Copy</button>
-      </div>
+      <p>Your app is running correctly.</p>
+      <p>Add this to your Home Screen for full-screen mode.</p>
     </div>
   </div>
-
-<script>
-  const OPTIONS = [
-    { key: "up", label: "↑ Up" },
-    { key: "down", label: "↓ Down" },
-    { key: "flat", label: "→ Flat" }
-  ];
-
-  const selection = { price: null, cvd: null, open_interest: null };
-  let rules = null;
-
-  function renderGroup(id, key) {
-    const el = document.getElementById(id);
-    OPTIONS.forEach(opt => {
-      const label = document.createElement("label");
-      const input = document.createElement("input");
-
-      input.type = "radio";
-      input.name = key;
-      input.value = opt.key;
-      input.addEventListener("input", () => {
-        selection[key] = opt.key;
-        update();
-      });
-
-      label.appendChild(input);
-      label.append(opt.label);
-      el.appendChild(label);
-    });
-  }
-
-  function classify(id) {
-    if (!id) return "";
-    if (id.includes("trend")) return "ok";
-    if (id.includes("trap")) return "bad";
-    return "warn";
-  }
-
-  function update() {
-    document.getElementById("debug").textContent =
-      `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}`;
-
-    if (!selection.price || !selection.cvd || !selection.open_interest) return;
-
-    const state = rules.states.find(s =>
-      s.condition.price === selection.price &&
-      s.condition.cvd === selection.cvd &&
-      s.condition.open_interest === selection.open_interest
-    );
-
-    const card = document.getElementById("result");
-    card.className = "card result";
-
-    if (!state) {
-      document.getElementById("state").textContent = "No rule defined";
-      return;
-    }
-
-    card.classList.add(classify(state.id));
-    document.getElementById("state").textContent = state.market_state;
-    document.getElementById("interpretation").textContent = state.interpretation;
-    document.getElementById("play").textContent = state.play;
-    document.getElementById("risk").textContent = state.risk_note;
-  }
-
-  async function init() {
-    renderGroup("price", "price");
-    renderGroup("cvd", "cvd");
-    renderGroup("oi", "open_interest");
-
-    const res = await fetch("./rules.json?v=4");
-    rules = await res.json();
-
-    document.getElementById("reset").onclick = () => location.reload();
-
-    document.getElementById("copy").onclick = async () => {
-      const text = document.getElementById("state").textContent;
-      if (text) await navigator.clipboard.writeText(text);
-      alert("Copied");
-    };
-  }
-
-  init();
-</script>
 </body>
 </html>
