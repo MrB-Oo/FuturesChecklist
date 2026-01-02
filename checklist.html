@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <title>MrB – Daily Checklist</title>
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MrB">
+
+  <!-- Icons (cache-busted) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=4">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=4">
+
+  <!-- Manifest -->
+  <link rel="manifest" href="./manifest.webmanifest?v=4">
+
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --card: #121826;
+      --text: #e6e8eb;
+      --muted: #9aa0a6;
+      --stroke: #2a3142;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    h1 { font-size: 18px; margin: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .pill {
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--stroke);
+      padding: 4px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .checklist { display: grid; gap: 8px; margin-top: 10px; }
+
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .check-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      flex: 0 0 auto;
+    }
+
+    .check-text { line-height: 1.25; font-size: 14px; }
+    .done .check-text { color: var(--muted); text-decoration: line-through; }
+
+    button, a.btn {
+      background: #1c2333;
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>MrB – Daily Checklist</h1>
+      <div class="pill" id="meta">0/0</div>
+    </div>
+    <div class="muted" id="date"></div>
+
+    <div class="card">
+      <div class="muted">Tick these before you trade.</div>
+
+      <div class="checklist" id="checklist"></div>
+
+      <div class="btns">
+        <button id="resetToday">Reset today</button>
+        <button id="allDone">Mark all done</button>
+        <button id="copy">Copy</button>
+        <a class="btn" href="./index.html">Back to Flow</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const TZ = "Europe/Amsterdam";
+
+  const RULES = [
+    "Only open long below VWAP",
+    "Only open short above VWAP",
+    "Don’t make your stop loss wider after defining your invalidation",
+    "Check your bands (Above, below, wide, thin)",
+    "Only buy on bar close",
+    "Don’t rush",
+    "Only on confirmation / cross over",
+    "10x — don’t break rule",
+    "Be very sure when adding to a trade (increases risk)",
+    "Take your profit and leave (don’t wait)",
+    "Any profit is good profit",
+    "Mark out your levels (where you want to do business)",
+    "After you take profit (don’t jump back in)"
+  ];
+
+  function ymdInTimeZone(date = new Date(), timeZone = TZ) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(date);
+    const get = (t) => parts.find(p => p.type === t)?.value;
+    return `${get("year")}-${get("month")}-${get("day")}`;
+  }
+
+  function prettyDateInTZ(date = new Date(), timeZone = TZ) {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone, weekday: "short", year: "numeric", month: "short", day: "2-digit"
+    }).format(date);
+  }
+
+  function storageKey() {
+    return `mrb_daily_checklist_${ymdInTimeZone()}`;
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(storageKey());
+      if (!raw) return Array(RULES.length).fill(false);
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length !== RULES.length) {
+        return Array(RULES.length).fill(false);
+      }
+      return parsed.map(Boolean);
+    } catch {
+      return Array(RULES.length).fill(false);
+    }
+  }
+
+  function saveState(arr) {
+    localStorage.setItem(storageKey(), JSON.stringify(arr));
+  }
+
+  function updateMeta(arr) {
+    const done = arr.filter(Boolean).length;
+    document.getElementById("meta").textContent = `${done}/${arr.length} complete`;
+  }
+
+  function render() {
+    document.getElementById("date").textContent = `Today: ${prettyDateInTZ()} (${TZ})`;
+
+    const container = document.getElementById("checklist");
+    container.innerHTML = "";
+
+    const state = loadState();
+
+    RULES.forEach((text, idx) => {
+      const row = document.createElement("label");
+      row.className = "check-item";
+
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = !!state[idx];
+
+      const t = document.createElement("div");
+      t.className = "check-text";
+      t.textContent = `${idx + 1}. ${text}`;
+
+      row.appendChild(box);
+      row.appendChild(t);
+
+      row.classList.toggle("done", box.checked);
+
+      box.addEventListener("change", () => {
+        const s = loadState();
+        s[idx] = box.checked;
+        saveState(s);
+        row.classList.toggle("done", box.checked);
+        updateMeta(s);
+      });
+
+      container.appendChild(row);
+    });
+
+    updateMeta(state);
+  }
+
+  function resetToday() {
+    const blank = Array(RULES.length).fill(false);
+    saveState(blank);
+    render();
+  }
+
+  function markAllDone() {
+    const all = Array(RULES.length).fill(true);
+    saveState(all);
+    render();
+  }
+
+  function buildCopyText() {
+    const s = loadState();
+    const lines = RULES.map((r, i) => `${s[i] ? "✅" : "☐"} ${i + 1}. ${r}`);
+    return [`MrB Daily Checklist — ${prettyDateInTZ()} (${TZ})`, ...lines].join("\n");
+  }
+
+  // If the day changes while page is open, re-render to a fresh checklist
+  let lastKey = storageKey();
+  setInterval(() => {
+    const k = storageKey();
+    if (k !== lastKey) { lastKey = k; render(); }
+  }, 30_000);
+
+  document.getElementById("resetToday").onclick = resetToday;
+  document.getElementById("allDone").onclick = markAllDone;
+  document.getElementById("copy").onclick = async () => {
+    const text = buildCopyText();
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("Copied");
+    } catch {
+      alert("Copy failed");
+    }
+  };
+
+  render();
+</script>
+</body>
+</html>
