@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
   <title>MrB – Futures Flow</title>
 
   <!-- iOS PWA -->
@@ -10,13 +11,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MrB">
 
-  <!-- Icons -->
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8">
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=8">
+  <!-- Icons (cache-busted) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=4">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=4">
 
   <!-- Manifest -->
-  <link rel="manifest" href="./manifest.webmanifest?v=8">
+  <link rel="manifest" href="./manifest.webmanifest?v=4">
 
+  <!-- Basic styling -->
   <style>
     :root {
       --bg: #0b0e14;
@@ -26,8 +28,8 @@
       --ok: #2ecc71;
       --warn: #f1c40f;
       --bad: #e74c3c;
-      --border: #2a3142;
     }
+
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -35,8 +37,18 @@
       color: var(--text);
       font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
     }
-    .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
-    h1 { font-size: 18px; margin: 0 0 6px; }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0 0 6px;
+    }
+
     .muted { color: var(--muted); font-size: 13px; }
 
     .card {
@@ -44,109 +56,55 @@
       border-radius: 14px;
       padding: 14px;
       margin-bottom: 12px;
-      border: 1px solid rgba(255,255,255,0.03);
     }
 
     .group-title {
       font-weight: 700;
       margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
     }
 
-    .choices { display: flex; gap: 8px; flex-wrap: wrap; }
+    .choices {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
     label {
-      border: 1px solid var(--border);
+      border: 1px solid #2a3142;
       border-radius: 10px;
       padding: 8px 10px;
       cursor: pointer;
-      user-select: none;
     }
+
     input { margin-right: 6px; }
 
-    .result h2 { margin: 0 0 8px; font-size: 16px; }
+    .result h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
     .ok { border-left: 4px solid var(--ok); }
     .warn { border-left: 4px solid var(--warn); }
     .bad { border-left: 4px solid var(--bad); }
 
     button {
       background: #1c2333;
-      border: 1px solid var(--border);
+      border: 1px solid #2a3142;
       color: var(--text);
       border-radius: 10px;
       padding: 10px 12px;
       cursor: pointer;
     }
-    .btns { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 
-    .debug { font-size: 12px; margin-top: 8px; color: var(--muted); white-space: pre-wrap; }
+    .btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
 
-    /* Small help icon */
-    .help-icon {
-      width: 26px;
-      height: 26px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #1c2333;
-      color: var(--text);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      line-height: 1;
-      cursor: pointer;
-      user-select: none;
-      flex: 0 0 auto;
-    }
-    .help-icon:active { transform: scale(0.98); }
-    .help-icon:hover { filter: brightness(1.1); }
-
-    /* Modal */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.65);
-      display: none;
-      align-items: flex-end;
-      justify-content: center;
-      padding: 16px;
-      z-index: 9999;
-    }
-    .modal {
-      width: min(720px, 100%);
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px;
-      max-height: 80vh;
-      overflow: auto;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-    }
-    .modal h2 { margin: 0 0 8px; font-size: 16px; }
-    .modal h3 { margin: 12px 0 6px; font-size: 14px; }
-    .modal p { margin: 6px 0; color: var(--text); }
-    .modal .muted { color: var(--muted); }
-    .modal .close-row { display:flex; justify-content: space-between; align-items:center; gap:10px; }
-    .pill {
-      display: inline-block;
-      border: 1px solid var(--border);
-      padding: 4px 8px;
-      border-radius: 999px;
+    .debug {
       font-size: 12px;
-      color: var(--muted);
-      margin-right: 6px;
-      margin-bottom: 6px;
-    }
-    .kbd {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      border: 1px solid var(--border);
-      border-bottom-width: 2px;
-      border-radius: 6px;
-      padding: 2px 6px;
+      margin-top: 8px;
       color: var(--muted);
     }
   </style>
@@ -155,46 +113,21 @@
 <body>
   <div class="wrap">
     <h1>MrB – Futures Flow</h1>
-    <div class="muted">Price · CVD · Open Interest · VWAP · Reaction</div>
+    <div class="muted">Price · CVD · Open Interest</div>
 
     <div class="card">
-      <div class="group-title">
-        <span>Price</span>
-        <span class="help-icon" id="helpPrice" title="What does Price Up/Down/Flat mean?">?</span>
-      </div>
+      <div class="group-title">Price</div>
       <div class="choices" id="price"></div>
     </div>
 
     <div class="card">
-      <div class="group-title">
-        <span>CVD</span>
-        <span class="help-icon" id="helpCvd" title="What does CVD Up/Down/Flat mean?">?</span>
-      </div>
+      <div class="group-title">CVD</div>
       <div class="choices" id="cvd"></div>
     </div>
 
     <div class="card">
-      <div class="group-title">
-        <span>Open Interest</span>
-        <span class="help-icon" id="helpOi" title="What does OI Up/Down/Flat mean?">?</span>
-      </div>
+      <div class="group-title">Open Interest</div>
       <div class="choices" id="oi"></div>
-    </div>
-
-    <div class="card">
-      <div class="group-title">
-        <span>VWAP Position</span>
-        <span class="help-icon" id="helpVwap" title="What does VWAP position mean?">?</span>
-      </div>
-      <div class="choices" id="vwap"></div>
-    </div>
-
-    <div class="card">
-      <div class="group-title">
-        <span>Reaction</span>
-        <span class="help-icon" id="helpReaction" title="What does Accept / Reject mean?">?</span>
-      </div>
-      <div class="choices" id="reaction"></div>
     </div>
 
     <div class="card result" id="result">
@@ -207,64 +140,31 @@
 
       <div class="btns">
         <button id="reset">Reset</button>
-        <button id="copy">Copy Full</button>
-        <button id="copyState">Copy State Only</button>
+        <button id="copy">Copy</button>
       </div>
-    </div>
-  </div>
-
-  <!-- HELP MODAL -->
-  <div class="modal-backdrop" id="helpBackdrop" role="dialog" aria-modal="true" aria-label="Help">
-    <div class="modal">
-      <div class="close-row">
-        <h2 id="helpTitle">Help</h2>
-        <button id="helpClose">Close</button>
-      </div>
-
-      <div id="helpBody"></div>
     </div>
   </div>
 
 <script>
-  const OPTIONS_3 = [
+  const OPTIONS = [
     { key: "up", label: "↑ Up" },
     { key: "down", label: "↓ Down" },
     { key: "flat", label: "→ Flat" }
   ];
-  const OPTIONS_VWAP = [
-    { key: "above", label: "Above" },
-    { key: "at", label: "At" },
-    { key: "below", label: "Below" }
-  ];
-  const OPTIONS_REACTION = [
-    { key: "accept", label: "Accept" },
-    { key: "reject", label: "Reject" }
-  ];
 
-  const selection = {
-    price: null,
-    cvd: null,
-    open_interest: null,
-    vwap_position: null,
-    reaction: null
-  };
-
+  const selection = { price: null, cvd: null, open_interest: null };
   let rules = null;
 
-  function $(id) { return document.getElementById(id); }
-
-  function renderGroup(containerId, key, options) {
-    const el = $(containerId);
-    el.innerHTML = "";
-    options.forEach(opt => {
+  function renderGroup(id, key) {
+    const el = document.getElementById(id);
+    OPTIONS.forEach(opt => {
       const label = document.createElement("label");
       const input = document.createElement("input");
 
       input.type = "radio";
       input.name = key;
       input.value = opt.key;
-
-      input.addEventListener("change", () => {
+      input.addEventListener("input", () => {
         selection[key] = opt.key;
         update();
       });
@@ -275,252 +175,52 @@
     });
   }
 
-  function classifyFromText(text) {
-    const t = (text || "").toLowerCase();
-    if (t.includes("trend up") || t.includes("trend down")) return "ok";
-    if (t.includes("liquidation") || t.includes("capitulation") || t.includes("trap")) return "bad";
-    if (t.includes("chop") || t.includes("balance") || t.includes("rotation") || t.includes("conflict")) return "warn";
+  function classify(id) {
+    if (!id) return "";
+    if (id.includes("trend")) return "ok";
+    if (id.includes("trap")) return "bad";
     return "warn";
   }
 
-  function overlay(path, key) {
-    return rules?.overlays?.[path]?.[key] || null;
-  }
-
-  function setError(msg, details) {
-    const card = $("result");
-    card.className = "card result bad";
-    $("state").textContent = msg || "Error";
-    $("interpretation").textContent = details || "";
-    $("play").textContent = "";
-    $("risk").textContent = "";
-  }
-
   function update() {
-    $("debug").textContent =
-      `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}, vwap=${selection.vwap_position || "?"}, reaction=${selection.reaction || "?"}`;
+    document.getElementById("debug").textContent =
+      `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}`;
 
-    if (!rules) return;
+    if (!selection.price || !selection.cvd || !selection.open_interest) return;
 
-    const { price, cvd, open_interest, vwap_position, reaction } = selection;
-    if (!price || !cvd || !open_interest || !vwap_position || !reaction) return;
-
-    const base = rules.states.find(s =>
-      s.condition.price === price &&
-      s.condition.cvd === cvd &&
-      s.condition.open_interest === open_interest
+    const state = rules.states.find(s =>
+      s.condition.price === selection.price &&
+      s.condition.cvd === selection.cvd &&
+      s.condition.open_interest === selection.open_interest
     );
 
-    if (!base) {
-      setError("No rule defined for that combination.", "Check rules.json states array.");
+    const card = document.getElementById("result");
+    card.className = "card result";
+
+    if (!state) {
+      document.getElementById("state").textContent = "No rule defined";
       return;
     }
 
-    const vwap = overlay("vwap_position", vwap_position);
-    const react = overlay("reaction", reaction);
-
-    const title = `${base.market_state} — ${(vwap?.label || vwap_position)} / ${(react?.label || reaction)}`;
-
-    const interpretation = [
-      base.interpretation,
-      vwap?.append?.interpretation,
-      react?.append?.interpretation
-    ].filter(Boolean).join(" ");
-
-    const play = [
-      base.play,
-      vwap?.append?.play,
-      react?.append?.play
-    ].filter(Boolean).join(" ");
-
-    const risk = [
-      base.risk_note,
-      vwap?.append?.risk_note,
-      react?.append?.risk_note
-    ].filter(Boolean).join(" ");
-
-    const card = $("result");
-    card.className = "card result";
-    card.classList.add(classifyFromText(base.market_state));
-
-    $("state").textContent = title;
-    $("interpretation").textContent = interpretation;
-    $("play").textContent = play;
-    $("risk").textContent = risk;
-  }
-
-  async function loadRules() {
-    // GitHub Pages cache bust
-    const url = "./rules.json?v=" + Date.now();
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status} loading rules.json`);
-    const json = await res.json();
-    if (!json || !Array.isArray(json.states)) throw new Error("rules.json missing 'states' array");
-    return json;
-  }
-
-  // ---------- HELP MODAL ----------
-  const HELP = {
-    price: {
-      title: "Price (Up / Flat / Down)",
-      body: `
-        <div class="muted">Price direction is the short-term direction over your already-defined window (N bars).</div>
-        <h3><span class="pill">Up</span></h3>
-        <p><strong>Meaning:</strong> Recent structure is moving higher (higher closes / higher swing).</p>
-        <p><strong>Use:</strong> Prefer buying pullbacks if other inputs confirm.</p>
-
-        <h3><span class="pill">Flat</span></h3>
-        <p><strong>Meaning:</strong> Overlapping candles / range; no clear short-term direction.</p>
-        <p><strong>Use:</strong> Prefer mean reversion and confirmation-based trades.</p>
-
-        <h3><span class="pill">Down</span></h3>
-        <p><strong>Meaning:</strong> Recent structure is moving lower (lower closes / lower swing).</p>
-        <p><strong>Use:</strong> Prefer selling pullbacks if other inputs confirm.</p>
-      `
-    },
-    cvd: {
-      title: "CVD (Up / Flat / Down)",
-      body: `
-        <div class="muted">CVD = cumulative volume delta (net aggressive buying vs selling) over your window.</div>
-
-        <h3><span class="pill">Up</span></h3>
-        <p><strong>Meaning:</strong> More market buys than market sells (buyers are the aggressor).</p>
-        <p><strong>Hint:</strong> If price is not rising, buyers may be getting absorbed.</p>
-
-        <h3><span class="pill">Flat</span></h3>
-        <p><strong>Meaning:</strong> Two-way flow is balanced; no clear aggressor.</p>
-        <p><strong>Hint:</strong> Use location (VWAP/levels) and Reaction to decide.</p>
-
-        <h3><span class="pill">Down</span></h3>
-        <p><strong>Meaning:</strong> More market sells than market buys (sellers are the aggressor).</p>
-        <p><strong>Hint:</strong> If price is not falling, sellers may be getting absorbed.</p>
-      `
-    },
-    oi: {
-      title: "Open Interest (Up / Flat / Down)",
-      body: `
-        <div class="muted">Open Interest (OI) = number of open contracts. It shows whether positions are being added or removed.</div>
-
-        <h3><span class="pill">Up</span></h3>
-        <p><strong>Meaning:</strong> New positions added (participation / position build).</p>
-        <p><strong>Hint:</strong> With price move → often initiative trend; with flat price → coil/absorption.</p>
-
-        <h3><span class="pill">Flat</span></h3>
-        <p><strong>Meaning:</strong> No meaningful change in outstanding positions.</p>
-        <p><strong>Hint:</strong> Often rotation/chop; direction signals less reliable.</p>
-
-        <h3><span class="pill">Down</span></h3>
-        <p><strong>Meaning:</strong> Positions closing (de-risking, covering, liquidation unwind).</p>
-        <p><strong>Hint:</strong> Price up + OI down = covering; price down + OI down = liquidation risk.</p>
-      `
-    },
-    vwap: {
-      title: "VWAP Position",
-      body: `
-        <div class="muted">VWAP is intraday “fair value”. Where price sits vs VWAP sets the default bias.</div>
-
-        <h3><span class="pill">Above VWAP</span></h3>
-        <p><strong>Meaning:</strong> Buyers have advantage (market paying above fair value).</p>
-        <p><strong>Typical:</strong> Dips bought; pullbacks bounce.</p>
-        <p><strong>Bias:</strong> Prefer longs on pullbacks; shorts need VWAP loss + failed reclaim.</p>
-
-        <h3><span class="pill">At VWAP</span></h3>
-        <p><strong>Meaning:</strong> Decision point / balance.</p>
-        <p><strong>Typical:</strong> Chop/whipsaw.</p>
-        <p><strong>Bias:</strong> Wait for Reaction (Accept/Reject) then trade confirmation.</p>
-
-        <h3><span class="pill">Below VWAP</span></h3>
-        <p><strong>Meaning:</strong> Sellers have advantage (market paying below fair value).</p>
-        <p><strong>Typical:</strong> Rallies sold; bounces fail.</p>
-        <p><strong>Bias:</strong> Prefer shorts on pullbacks; longs need VWAP reclaim + hold.</p>
-      `
-    },
-    reaction: {
-      title: "Reaction (Accept / Reject)",
-      body: `
-        <div class="muted">Reaction describes what price does at the level you care about (VWAP, band, prior high/low).</div>
-
-        <h3><span class="pill">Accept</span></h3>
-        <p><strong>Meaning:</strong> Price goes through a level and <strong>holds</strong> beyond it.</p>
-        <p><strong>Simple rule:</strong> Close(s) stay beyond the level + follow-through (no immediate snap back).</p>
-        <p><strong>Implication:</strong> Continuation more likely → trade break-and-hold then retest.</p>
-
-        <h3><span class="pill">Reject</span></h3>
-        <p><strong>Meaning:</strong> Price probes through a level then <strong>fails</strong> back.</p>
-        <p><strong>Simple rule:</strong> Wick through the level but close back on the original side.</p>
-        <p><strong>Implication:</strong> Mean reversion more likely → fade toward VWAP/mean after confirmation.</p>
-
-        <h3>Fast cheats</h3>
-        <p><span class="kbd">Above + Accept</span> → continuation (buy retest).</p>
-        <p><span class="kbd">Above + Reject</span> → exhaustion risk (reduce longs; shorts only if VWAP breaks).</p>
-        <p><span class="kbd">Below + Accept</span> → continuation (sell retest).</p>
-        <p><span class="kbd">Below + Reject</span> → bounce risk (cover shorts; long only after reclaim/structure).</p>
-      `
-    }
-  };
-
-  function openHelp(which) {
-    const backdrop = $("helpBackdrop");
-    $("helpTitle").textContent = HELP[which].title;
-    $("helpBody").innerHTML = HELP[which].body;
-    backdrop.style.display = "flex";
-  }
-
-  function closeHelp() {
-    $("helpBackdrop").style.display = "none";
-  }
-
-  function initHelp() {
-    $("helpPrice").onclick = () => openHelp("price");
-    $("helpCvd").onclick = () => openHelp("cvd");
-    $("helpOi").onclick = () => openHelp("oi");
-    $("helpVwap").onclick = () => openHelp("vwap");
-    $("helpReaction").onclick = () => openHelp("reaction");
-
-    $("helpClose").onclick = closeHelp;
-
-    $("helpBackdrop").addEventListener("click", (e) => {
-      if (e.target === $("helpBackdrop")) closeHelp();
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeHelp();
-    });
+    card.classList.add(classify(state.id));
+    document.getElementById("state").textContent = state.market_state;
+    document.getElementById("interpretation").textContent = state.interpretation;
+    document.getElementById("play").textContent = state.play;
+    document.getElementById("risk").textContent = state.risk_note;
   }
 
   async function init() {
-    renderGroup("price", "price", OPTIONS_3);
-    renderGroup("cvd", "cvd", OPTIONS_3);
-    renderGroup("oi", "open_interest", OPTIONS_3);
-    renderGroup("vwap", "vwap_position", OPTIONS_VWAP);
-    renderGroup("reaction", "reaction", OPTIONS_REACTION);
+    renderGroup("price", "price");
+    renderGroup("cvd", "cvd");
+    renderGroup("oi", "open_interest");
 
-    initHelp();
+    const res = await fetch("./rules.json?v=4");
+    rules = await res.json();
 
-    try {
-      rules = await loadRules();
-      $("debug").textContent += "\nRules loaded: version=" + (rules.version || "?") + ", states=" + rules.states.length;
-    } catch (e) {
-      setError("Failed to load rules.json", String(e));
-      $("debug").textContent += "\n" + String(e);
-      return;
-    }
+    document.getElementById("reset").onclick = () => location.reload();
 
-    $("reset").onclick = () => location.reload();
-
-    $("copyState").onclick = async () => {
-      const text = $("state").textContent;
-      if (text) await navigator.clipboard.writeText(text);
-      alert("Copied state");
-    };
-
-    $("copy").onclick = async () => {
-      const text = [
-        $("state").textContent,
-        $("interpretation").textContent,
-        "Play: " + $("play").textContent,
-        "Risk: " + $("risk").textContent
-      ].filter(Boolean).join("\n");
+    document.getElementById("copy").onclick = async () => {
+      const text = document.getElementById("state").textContent;
       if (text) await navigator.clipboard.writeText(text);
       alert("Copied");
     };
