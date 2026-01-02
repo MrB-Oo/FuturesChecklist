@@ -18,7 +18,6 @@
   <!-- Manifest -->
   <link rel="manifest" href="./manifest.webmanifest?v=4">
 
-  <!-- Basic styling -->
   <style>
     :root {
       --bg: #0b0e14;
@@ -28,6 +27,8 @@
       --ok: #2ecc71;
       --warn: #f1c40f;
       --bad: #e74c3c;
+      --stroke: #2a3142;
+      --stroke2: #39435b;
     }
 
     * { box-sizing: border-box; }
@@ -44,11 +45,7 @@
       padding: 16px;
     }
 
-    h1 {
-      font-size: 18px;
-      margin: 0 0 6px;
-    }
-
+    h1 { font-size: 18px; margin: 0 0 6px; }
     .muted { color: var(--muted); font-size: 13px; }
 
     .card {
@@ -58,10 +55,7 @@
       margin-bottom: 12px;
     }
 
-    .group-title {
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
+    .group-title { font-weight: 700; margin-bottom: 8px; }
 
     .choices {
       display: flex;
@@ -70,18 +64,28 @@
     }
 
     label {
-      border: 1px solid #2a3142;
+      border: 1px solid var(--stroke);
       border-radius: 10px;
       padding: 8px 10px;
       cursor: pointer;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color .15s ease, transform .05s ease;
+    }
+    label:hover { border-color: var(--stroke2); }
+    label:active { transform: translateY(1px); }
+
+    input { margin: 0; }
+
+    /* Make selected option feel like a button */
+    label.selected {
+      border-color: #55607a;
+      background: rgba(255,255,255,0.03);
     }
 
-    input { margin-right: 6px; }
-
-    .result h2 {
-      margin: 0 0 8px;
-      font-size: 16px;
-    }
+    .result h2 { margin: 0 0 8px; font-size: 16px; }
 
     .ok { border-left: 4px solid var(--ok); }
     .warn { border-left: 4px solid var(--warn); }
@@ -89,23 +93,20 @@
 
     button {
       background: #1c2333;
-      border: 1px solid #2a3142;
+      border: 1px solid var(--stroke);
       color: var(--text);
       border-radius: 10px;
       padding: 10px 12px;
       cursor: pointer;
     }
 
-    .btns {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
+    .btns { display: flex; gap: 10px; margin-top: 10px; }
 
-    .debug {
-      font-size: 12px;
-      margin-top: 8px;
-      color: var(--muted);
+    .debug { font-size: 12px; margin-top: 8px; color: var(--muted); }
+
+    .error {
+      border-left: 4px solid var(--bad);
+      color: var(--text);
     }
   </style>
 </head>
@@ -155,6 +156,14 @@
   const selection = { price: null, cvd: null, open_interest: null };
   let rules = null;
 
+  function setSelectedStyles(groupKey) {
+    document.querySelectorAll(`input[name="${groupKey}"]`).forEach(inp => {
+      const lab = inp.closest("label");
+      if (!lab) return;
+      lab.classList.toggle("selected", inp.checked);
+    });
+  }
+
   function renderGroup(id, key) {
     const el = document.getElementById(id);
     OPTIONS.forEach(opt => {
@@ -164,8 +173,10 @@
       input.type = "radio";
       input.name = key;
       input.value = opt.key;
-      input.addEventListener("input", () => {
+
+      input.addEventListener("change", () => {
         selection[key] = opt.key;
+        setSelectedStyles(key);
         update();
       });
 
@@ -175,18 +186,47 @@
     });
   }
 
-  function classify(id) {
-    if (!id) return "";
-    if (id.includes("trend")) return "ok";
-    if (id.includes("trap")) return "bad";
+  // Prefer JSON-driven classification if present
+  function classify(state) {
+    if (!state) return "warn";
+
+    // If you add state.tone = "ok|warn|bad" in JSON, it will be used
+    if (state.tone === "ok" || state.tone === "warn" || state.tone === "bad") return state.tone;
+
+    // Otherwise map confidence/priority
+    const conf = (state.confidence || "").toLowerCase();
+    if (conf === "high") return "ok";
+    if (conf === "medium") return "warn";
+    if (conf === "low") return "warn";
+
+    // Fallback: older IDs
+    if ((state.id || "").includes("trend")) return "ok";
+    if ((state.id || "").includes("trap")) return "bad";
     return "warn";
+  }
+
+  function setResultEmpty(msg = "Select inputs…") {
+    const card = document.getElementById("result");
+    card.className = "card result";
+    document.getElementById("state").textContent = msg;
+    document.getElementById("interpretation").textContent = "";
+    document.getElementById("play").textContent = "";
+    document.getElementById("risk").textContent = "";
   }
 
   function update() {
     document.getElementById("debug").textContent =
       `price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}`;
 
-    if (!selection.price || !selection.cvd || !selection.open_interest) return;
+    if (!selection.price || !selection.cvd || !selection.open_interest) {
+      setResultEmpty("Select inputs…");
+      return;
+    }
+
+    if (!rules || !rules.states) {
+      setResultEmpty("Rules not loaded");
+      return;
+    }
 
     const state = rules.states.find(s =>
       s.condition.price === selection.price &&
@@ -198,15 +238,47 @@
     card.className = "card result";
 
     if (!state) {
-      document.getElementById("state").textContent = "No rule defined";
+      card.classList.add("warn");
+      document.getElementById("state").textContent = "No rule defined for this combo";
+      document.getElementById("interpretation").textContent = "Add a state in rules.json for this exact (price, cvd, oi) combination.";
+      document.getElementById("play").textContent = "Stay flat or trade structure/VWAP only.";
+      document.getElementById("risk").textContent = "Low clarity setup.";
       return;
     }
 
-    card.classList.add(classify(state.id));
-    document.getElementById("state").textContent = state.market_state;
-    document.getElementById("interpretation").textContent = state.interpretation;
-    document.getElementById("play").textContent = state.play;
-    document.getElementById("risk").textContent = state.risk_note;
+    card.classList.add(classify(state));
+    document.getElementById("state").textContent = state.market_state || "(unnamed state)";
+    document.getElementById("interpretation").textContent = state.interpretation || "";
+    document.getElementById("play").textContent = state.play || "";
+    document.getElementById("risk").textContent = state.risk_note || "";
+  }
+
+  function buildCopyText() {
+    const state = document.getElementById("state").textContent || "";
+    const interp = document.getElementById("interpretation").textContent || "";
+    const play = document.getElementById("play").textContent || "";
+    const risk = document.getElementById("risk").textContent || "";
+
+    const inputs = `Inputs: price=${selection.price || "?"}, cvd=${selection.cvd || "?"}, oi=${selection.open_interest || "?"}`;
+    return [
+      state,
+      interp ? `Interpretation: ${interp}` : "",
+      play ? `Play: ${play}` : "",
+      risk ? `Risk: ${risk}` : "",
+      inputs
+    ].filter(Boolean).join("\n");
+  }
+
+  function softReset() {
+    selection.price = null;
+    selection.cvd = null;
+    selection.open_interest = null;
+
+    document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+    ["price", "cvd", "open_interest"].forEach(setSelectedStyles);
+
+    setResultEmpty("Select inputs…");
+    document.getElementById("debug").textContent = "price=?, cvd=?, oi=?";
   }
 
   async function init() {
@@ -214,16 +286,43 @@
     renderGroup("cvd", "cvd");
     renderGroup("oi", "open_interest");
 
-    const res = await fetch("./rules.json?v=4");
-    rules = await res.json();
+    setResultEmpty("Loading rules…");
 
-    document.getElementById("reset").onclick = () => location.reload();
+    try {
+      const res = await fetch("./rules.json?v=4", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} when loading rules.json`);
+      rules = await res.json();
+      setResultEmpty("Select inputs…");
+    } catch (e) {
+      const card = document.getElementById("result");
+      card.className = "card result error";
+      document.getElementById("state").textContent = "Failed to load rules.json";
+      document.getElementById("interpretation").textContent = String(e);
+      document.getElementById("play").textContent = "Check file name/path and GitHub Pages deployment.";
+      document.getElementById("risk").textContent = "No rules = no matching.";
+    }
+
+    document.getElementById("reset").onclick = softReset;
 
     document.getElementById("copy").onclick = async () => {
-      const text = document.getElementById("state").textContent;
-      if (text) await navigator.clipboard.writeText(text);
-      alert("Copied");
+      const text = buildCopyText();
+      if (!text.trim()) return alert("Nothing to copy yet.");
+      try {
+        await navigator.clipboard.writeText(text);
+        alert("Copied");
+      } catch {
+        // Fallback for older browsers
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+        alert("Copied");
+      }
     };
+
+    softReset();
   }
 
   init();
