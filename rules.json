@@ -1,78 +1,291 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "inputs": ["price", "cvd", "open_interest"],
+  "signal_states": {
+    "price": ["up", "down", "flat"],
+    "cvd": ["up", "down", "flat"],
+    "open_interest": ["up", "down", "flat"]
+  },
+  "implementation_notes": [
+    "Calibrate up/down/flat thresholds per timeframe to avoid noise-triggered mislabels.",
+    "Prefer confirmation: require the condition to hold for 2-3 bars or a majority of the last N bars.",
+    "CVD methodology and venue aggregation materially change signals; keep sources consistent.",
+    "OI updates can lag; consider smoothing or evaluating OI change over a rolling window.",
+    "Same combo behaves differently at extremes (range high/low, VWAP bands) vs mid-range; treat location as a separate UI/decision layer.",
+    "Use priority/confidence to select a single dominant state per evaluation tick."
+  ],
   "states": [
     {
-      "id": "initiative_long_trend",
+      "id": "trend_up_initiative",
+      "priority": 95,
+      "confidence": "high",
       "condition": { "price": "up", "cvd": "up", "open_interest": "up" },
-      "market_state": "Strong bullish trend",
-      "interpretation": "New longs are entering with conviction and buyers are in control.",
-      "play": "Trade with the trend. Buy pullbacks, especially near VWAP.",
-      "risk_note": "Do not fade strength while OI keeps expanding."
+      "market_state": "Initiative bullish trend",
+      "interpretation": "Price is rising with net aggressive buying and expanding positioning; buyers are in control and new risk is being added.",
+      "play": "Trade with trend. Buy pullbacks; best continuation when VWAP holds and highs are accepted.",
+      "risk_note": "Can still be a squeeze if it follows a sharp downtrend—avoid late entries far from VWAP."
     },
     {
-      "id": "initiative_short_trend",
-      "condition": { "price": "down", "cvd": "down", "open_interest": "up" },
-      "market_state": "Strong bearish trend",
-      "interpretation": "New shorts are entering aggressively and sellers are in control.",
-      "play": "Trade with the trend. Sell pullbacks toward VWAP.",
-      "risk_note": "Do not catch bottoms while OI is expanding."
-    },
-    {
-      "id": "short_squeeze",
+      "id": "covering_rally_buying",
+      "priority": 70,
+      "confidence": "medium",
       "condition": { "price": "up", "cvd": "up", "open_interest": "down" },
-      "market_state": "Short squeeze",
-      "interpretation": "Rising price is driven by shorts closing, not new buyers.",
-      "play": "Take profits into strength. Avoid chasing longs.",
-      "risk_note": "Move can end abruptly once liquidations finish."
+      "market_state": "Short covering / position reduction rally",
+      "interpretation": "Price rises with aggressive buying while OI falls—more closing than fresh net positioning (often shorts closing).",
+      "play": "Take profits into strength or trail tight. Prefer mean-reversion entries back toward VWAP rather than chasing.",
+      "risk_note": "Move can stall abruptly once liquidation/covering completes."
     },
     {
-      "id": "long_liquidation",
-      "condition": { "price": "down", "cvd": "down", "open_interest": "down" },
-      "market_state": "Long liquidation",
-      "interpretation": "Falling price is driven by forced long exits and panic selling.",
-      "play": "Look for exhaustion and potential mean reversion near support or VWAP.",
-      "risk_note": "Do not short into capitulation."
-    },
-    {
-      "id": "bullish_rotation",
+      "id": "rotation_up_limited_acceptance",
+      "priority": 55,
+      "confidence": "medium",
       "condition": { "price": "up", "cvd": "up", "open_interest": "flat" },
-      "market_state": "Bullish rotation / absorption",
-      "interpretation": "Buyers are aggressive but no new net positions are being added.",
-      "play": "Scalp only. Fade extremes and target VWAP.",
-      "risk_note": "Breakouts often fail without OI expansion."
+      "market_state": "Rotation up (limited acceptance)",
+      "interpretation": "Aggressive buying lifts price but net positioning is not expanding; often two-way trade or profit-taking into bids.",
+      "play": "Scalp with the push but expect fade/chop near extremes. Use VWAP as primary target/decision line.",
+      "risk_note": "Breakouts often fail without sustained OI expansion."
     },
     {
-      "id": "bearish_rotation",
-      "condition": { "price": "down", "cvd": "down", "open_interest": "flat" },
-      "market_state": "Bearish rotation / absorption",
-      "interpretation": "Sellers are aggressive but no new net positions are being added.",
-      "play": "Scalp only. Expect chop or mean reversion.",
-      "risk_note": "Continuation is unlikely without OI expansion."
+      "id": "stealth_accumulation_up",
+      "priority": 60,
+      "confidence": "medium",
+      "condition": { "price": "up", "cvd": "flat", "open_interest": "up" },
+      "market_state": "Stealth accumulation / passive bid control",
+      "interpretation": "Price rises without strong aggressor imbalance while OI expands—often passive buyers absorbing and building positions (spot-led or iceberg bids).",
+      "play": "Prefer pullback entries; use structure/VWAP to time. Stronger if price holds above VWAP after dips.",
+      "risk_note": "If price is near range high, watch for failed acceptance and fast reversals."
     },
     {
-      "id": "bull_trap",
+      "id": "deleveraging_grind_up",
+      "priority": 40,
+      "confidence": "low",
+      "condition": { "price": "up", "cvd": "flat", "open_interest": "down" },
+      "market_state": "Grind up on de-risking",
+      "interpretation": "Price drifts up while OI falls and CVD is neutral—often position reduction (shorts closing + longs trimming) rather than strong new demand.",
+      "play": "Avoid chasing; fade extensions into VWAP targets or wait for OI to stabilize/turn up for continuation.",
+      "risk_note": "Fragile move—can reverse quickly if sellers step in."
+    },
+    {
+      "id": "drift_up_balance",
+      "priority": 25,
+      "confidence": "low",
+      "condition": { "price": "up", "cvd": "flat", "open_interest": "flat" },
+      "market_state": "Low-conviction drift up",
+      "interpretation": "Price is rising but flow and positioning are not confirming; often light liquidity or slow rotation.",
+      "play": "Small size only. Treat as range behavior: take quick profits, target VWAP/value areas.",
+      "risk_note": "High false-break probability."
+    },
+    {
+      "id": "bullish_absorption_with_build",
+      "priority": 75,
+      "confidence": "medium",
       "condition": { "price": "up", "cvd": "down", "open_interest": "up" },
-      "market_state": "Bull trap risk",
-      "interpretation": "Price is rising but buyers are not aggressive; shorts are adding.",
-      "play": "Avoid longs. Look for short entries at resistance.",
-      "risk_note": "Rally likely to fail."
+      "market_state": "Bullish absorption (short trap risk)",
+      "interpretation": "Aggressive selling fails to push price down; passive buyers absorb while positions build—often new shorts opening into strong bids and getting trapped.",
+      "play": "Prefer long bias after confirmation (reclaim/hold VWAP, higher low). Look for squeeze continuation if sellers keep hitting and price won’t drop.",
+      "risk_note": "If price is at major resistance and acceptance fails, it can still roll over—confirm with structure."
     },
     {
-      "id": "bear_trap",
+      "id": "bullish_absorption_rotation",
+      "priority": 50,
+      "confidence": "medium",
+      "condition": { "price": "up", "cvd": "down", "open_interest": "flat" },
+      "market_state": "Bullish absorption (rotation)",
+      "interpretation": "Selling aggression is absorbed but net positioning is flat—often a rotation where passive bids are defending without adding much risk.",
+      "play": "Scalp long bias toward VWAP/upper value; be quick near highs unless OI turns up.",
+      "risk_note": "Without OI expansion, upside may be limited."
+    },
+    {
+      "id": "bullish_reversal_on_closing",
+      "priority": 45,
+      "confidence": "low",
+      "condition": { "price": "up", "cvd": "down", "open_interest": "down" },
+      "market_state": "Reversal up with net closing",
+      "interpretation": "Price rises despite sell aggression while OI falls—often mixed closing flows (longs exiting into strong bids and/or shorts covering).",
+      "play": "Treat as reactive bounce: take quicker profits, prefer entries closer to VWAP/support.",
+      "risk_note": "Choppy and headline-sensitive; can fade fast."
+    },
+
+    {
+      "id": "trend_down_initiative",
+      "priority": 95,
+      "confidence": "high",
+      "condition": { "price": "down", "cvd": "down", "open_interest": "up" },
+      "market_state": "Initiative bearish trend",
+      "interpretation": "Price falls with aggressive selling and expanding positioning; sellers are in control and new shorts/risk are being added.",
+      "play": "Trade with trend. Sell pullbacks; best continuation when VWAP rejects and lows are accepted.",
+      "risk_note": "Can become liquidation-heavy late—avoid shorting into obvious capitulation."
+    },
+    {
+      "id": "long_liquidation_down",
+      "priority": 85,
+      "confidence": "high",
+      "condition": { "price": "down", "cvd": "down", "open_interest": "down" },
+      "market_state": "Long liquidation / forced selloff",
+      "interpretation": "Price drops with sell aggression while OI falls—positions are being closed (forced long exits, deleveraging).",
+      "play": "Look for exhaustion (sell pressure slowing + OI stabilizing) for bounce setups; avoid late shorts.",
+      "risk_note": "Lowest R:R to initiate shorts; snaps can be violent."
+    },
+    {
+      "id": "rotation_down_limited_acceptance",
+      "priority": 55,
+      "confidence": "medium",
+      "condition": { "price": "down", "cvd": "down", "open_interest": "flat" },
+      "market_state": "Rotation down (limited acceptance)",
+      "interpretation": "Aggressive selling pushes price lower but net positioning isn’t expanding; often two-way trade or profit-taking into offers.",
+      "play": "Scalp with the push but expect mean reversion near support/VWAP. Be quick at lows.",
+      "risk_note": "Continuation often needs OI expansion."
+    },
+    {
+      "id": "stealth_distribution_down",
+      "priority": 60,
+      "confidence": "medium",
+      "condition": { "price": "down", "cvd": "flat", "open_interest": "up" },
+      "market_state": "Stealth distribution / passive offer control",
+      "interpretation": "Price falls without strong aggressor imbalance while OI expands—often passive sellers absorbing buys and building short exposure (or spot-led sell).",
+      "play": "Prefer pullback shorts; use VWAP/structure to time. Stronger if price stays below VWAP on retests.",
+      "risk_note": "If this occurs at range low, watch for failure-to-continue and trap reversals."
+    },
+    {
+      "id": "deleveraging_grind_down",
+      "priority": 40,
+      "confidence": "low",
+      "condition": { "price": "down", "cvd": "flat", "open_interest": "down" },
+      "market_state": "Grind down on de-risking",
+      "interpretation": "Price drifts down while OI falls and CVD is neutral—often longs reducing and risk coming off rather than fresh aggressive selling.",
+      "play": "Avoid chasing shorts. Prefer fade back to VWAP or wait for OI to turn up for real continuation.",
+      "risk_note": "Fragile move; can reverse if buyers step in."
+    },
+    {
+      "id": "drift_down_balance",
+      "priority": 25,
+      "confidence": "low",
+      "condition": { "price": "down", "cvd": "flat", "open_interest": "flat" },
+      "market_state": "Low-conviction drift down",
+      "interpretation": "Price is falling but flow and positioning are not confirming; often light liquidity or slow rotation.",
+      "play": "Small size only. Treat as range behavior: take quick profits, target VWAP/value areas.",
+      "risk_note": "High false-break probability."
+    },
+    {
+      "id": "bearish_absorption_with_build",
+      "priority": 75,
+      "confidence": "medium",
       "condition": { "price": "down", "cvd": "up", "open_interest": "up" },
-      "market_state": "Bear trap risk",
-      "interpretation": "Price is falling but sellers are not aggressive; longs are absorbing.",
-      "play": "Avoid shorts. Look for reversal toward VWAP.",
-      "risk_note": "Flush may reverse sharply."
+      "market_state": "Bearish absorption (long trap risk)",
+      "interpretation": "Aggressive buying fails to lift price; passive sellers absorb while positions build—often new longs opening into strong offers and getting trapped.",
+      "play": "Prefer short bias after confirmation (lose VWAP, lower high). Look for flush continuation if buyers keep lifting and price won’t rise.",
+      "risk_note": "If price is at major support and fails to continue lower, it can snap back—confirm with structure."
     },
     {
-      "id": "chop_balance",
+      "id": "bearish_absorption_rotation",
+      "priority": 50,
+      "confidence": "medium",
+      "condition": { "price": "down", "cvd": "up", "open_interest": "flat" },
+      "market_state": "Bearish absorption (rotation)",
+      "interpretation": "Buy aggression is absorbed but net positioning is flat—often rotation where passive offers defend without adding much risk.",
+      "play": "Scalp short bias toward VWAP/lower value; be quick near lows unless OI turns up on sells.",
+      "risk_note": "Without OI expansion, downside may be limited."
+    },
+    {
+      "id": "bearish_reversal_on_closing",
+      "priority": 45,
+      "confidence": "low",
+      "condition": { "price": "down", "cvd": "up", "open_interest": "down" },
+      "market_state": "Reversal down with net closing",
+      "interpretation": "Price falls despite buy aggression while OI falls—often mixed closing flows (shorts taking profit + longs trapped/unwinding).",
+      "play": "Treat as reactive drop: take quicker profits, prefer entries closer to VWAP/resistance.",
+      "risk_note": "Choppy; can mean-revert quickly."
+    },
+
+    {
+      "id": "standoff_buy_pressure_builds",
+      "priority": 65,
+      "confidence": "medium",
+      "condition": { "price": "flat", "cvd": "up", "open_interest": "up" },
+      "market_state": "Standoff: buyers aggressive, positions building",
+      "interpretation": "Aggressive buying is met by passive selling; OI rises but price stalls—often absorption at resistance or pre-break compression.",
+      "play": "Do not chase. Wait: breakout acceptance for long, or rejection/failed high for short.",
+      "risk_note": "This is a classic 'pressure cooker'—resolution can be fast either way."
+    },
+    {
+      "id": "buyers_lifting_into_closing",
+      "priority": 35,
+      "confidence": "low",
+      "condition": { "price": "flat", "cvd": "up", "open_interest": "down" },
+      "market_state": "Buy pressure with net closing",
+      "interpretation": "Aggressive buying occurs but OI falls and price doesn’t move—often short covering into passive offers or longs taking profit.",
+      "play": "Fade extremes; treat as range until price accepts above VWAP/level with OI stabilizing.",
+      "risk_note": "If buyers can’t move price with aggression, upside is capped."
+    },
+    {
+      "id": "buyers_active_no_build",
+      "priority": 30,
+      "confidence": "low",
+      "condition": { "price": "flat", "cvd": "up", "open_interest": "flat" },
+      "market_state": "Chop with buy aggression",
+      "interpretation": "Buy aggression appears but price is stuck and OI is flat—likely two-way scalping and liquidity games.",
+      "play": "Mean reversion and quick targets; avoid breakout assumptions.",
+      "risk_note": "High whipsaw environment."
+    },
+    {
+      "id": "coil_positioning_build",
+      "priority": 60,
+      "confidence": "medium",
+      "condition": { "price": "flat", "cvd": "flat", "open_interest": "up" },
+      "market_state": "Position build / compression",
+      "interpretation": "OI rises while price and CVD are flat—positions are being built quietly; often precedes expansion/volatility.",
+      "play": "Reduce size until direction confirms. Mark range highs/lows; trade the break with acceptance.",
+      "risk_note": "Direction is unknown—avoid bias without structure."
+    },
+    {
+      "id": "deleveraging_compression",
+      "priority": 45,
+      "confidence": "low",
+      "condition": { "price": "flat", "cvd": "flat", "open_interest": "down" },
+      "market_state": "Deleveraging / risk off compression",
+      "interpretation": "OI falls while price and CVD are flat—participants are closing positions; volatility can shrink before a later move.",
+      "play": "Mean reversion only. Wait for fresh participation (OI turn + CVD direction) before taking breakouts seriously.",
+      "risk_note": "False breaks are common in low participation."
+    },
+    {
+      "id": "balanced_chop",
+      "priority": 20,
+      "confidence": "low",
       "condition": { "price": "flat", "cvd": "flat", "open_interest": "flat" },
-      "market_state": "Chop / balance",
-      "interpretation": "Market is balanced with no side committing.",
-      "play": "Mean reversion only. Small size, quick exits.",
+      "market_state": "Balance / chop",
+      "interpretation": "No side is committing; flow and positioning are neutral.",
+      "play": "Mean reversion only. Small size, quick exits. Use VWAP/value as magnets.",
       "risk_note": "Directional trades have low probability."
+    },
+    {
+      "id": "standoff_sell_pressure_builds",
+      "priority": 65,
+      "confidence": "medium",
+      "condition": { "price": "flat", "cvd": "down", "open_interest": "up" },
+      "market_state": "Standoff: sellers aggressive, positions building",
+      "interpretation": "Aggressive selling is met by passive buying; OI rises but price stalls—often absorption at support or pre-break compression.",
+      "play": "Do not chase. Wait: breakdown acceptance for short, or rejection/failed low for long.",
+      "risk_note": "Fast resolution likely—manage risk tightly."
+    },
+    {
+      "id": "sellers_hitting_into_closing",
+      "priority": 35,
+      "confidence": "low",
+      "condition": { "price": "flat", "cvd": "down", "open_interest": "down" },
+      "market_state": "Sell pressure with net closing",
+      "interpretation": "Aggressive selling occurs but OI falls and price doesn’t move—often long liquidation being absorbed or shorts taking profit into bids.",
+      "play": "Look for base signals (sell pressure weakening + failed breakdown) for a bounce; otherwise scalp range.",
+      "risk_note": "If selling can’t move price, downside is capped until participation returns."
+    },
+    {
+      "id": "sellers_active_no_build",
+      "priority": 30,
+      "confidence": "low",
+      "condition": { "price": "flat", "cvd": "down", "open_interest": "flat" },
+      "market_state": "Chop with sell aggression",
+      "interpretation": "Sell aggression appears but price is stuck and OI is flat—likely two-way scalping and liquidity games.",
+      "play": "Mean reversion and quick targets; avoid breakdown assumptions.",
+      "risk_note": "High whipsaw environment."
     }
   ]
 }
